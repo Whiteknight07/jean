@@ -1987,7 +1987,7 @@ pub fn run() {
             log::trace!("WEBKIT_DISABLE_DMABUF_RENDERER=1");
         }
 
-        // Non-AppImage: Force X11 backend only if user explicitly requests it
+        // Allow users to force X11 backend via JEAN_FORCE_X11=1
         let force_x11 = std::env::var("JEAN_FORCE_X11").unwrap_or_else(|_| "0".to_string()) == "1";
         if force_x11 && is_appimage {
             log::trace!(

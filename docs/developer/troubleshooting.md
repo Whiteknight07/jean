@@ -27,6 +27,36 @@ Incompatibility between WebKitGTK's hardware-accelerated compositing and certain
 
 ---
 
+## Required Linux Dependencies
+
+WebKitGTK requires GStreamer plugins at runtime. Without them, the WebKit renderer process crashes with a blank screen.
+
+**Debian/Ubuntu/Linux Mint:**
+
+```bash
+sudo apt install gstreamer1.0-plugins-good
+```
+
+**Arch/Manjaro:**
+
+```bash
+sudo pacman -S gst-plugins-good
+```
+
+**Fedora:**
+
+```bash
+sudo dnf install gstreamer1-plugins-good
+```
+
+**Symptoms of missing GStreamer plugins:**
+
+- Blank/gray window with no content
+- `GStreamer element autoaudiosink not found` in terminal
+- `GLib-GObject-CRITICAL: invalid (NULL) pointer instance` errors
+
+---
+
 ## Automatic Fixes
 
 Jean automatically applies the following environment variables on Linux to prevent these issues:

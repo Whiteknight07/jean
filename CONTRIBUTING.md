@@ -18,13 +18,19 @@ xcode-select --install
 
 ```bash
 sudo apt update
-sudo apt install libwebkit2gtk-4.1-dev librsvg2-dev patchelf
+sudo apt install libwebkit2gtk-4.1-dev librsvg2-dev patchelf gstreamer1.0-plugins-good
 
 # Ubuntu/Linux Mint: prefer Ayatana AppIndicator (avoids conflicts between old libappindicator3 and Ayatana packages)
 sudo apt install libayatana-appindicator3-dev
 
 # Debian/older distros (if Ayatana packages are unavailable):
 # sudo apt install libappindicator3-dev
+```
+
+**Linux** (Arch/Manjaro):
+
+```bash
+sudo pacman -S webkit2gtk-4.1 librsvg patchelf gst-plugins-good
 ```
 
 **Linux Remote Desktop (RDP/xrdp)**: See [Linux Remote Development](#linux-remote-development-rdpxrdp) section below.
