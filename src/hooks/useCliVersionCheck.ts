@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   useClaudeCliStatus,
   useAvailableCliVersions,
@@ -37,6 +37,7 @@ import { isNewerVersion } from '@/lib/version-utils'
 import { logger } from '@/lib/logger'
 import { isNativeApp } from '@/lib/environment'
 import { usePreferences } from '@/services/preferences'
+import type { AppPreferences } from '@/types/preferences'
 import { invoke } from '@/lib/transport'
 
 interface CliUpdateInfo {
@@ -46,6 +47,10 @@ interface CliUpdateInfo {
   cliSource?: 'jean' | 'path'
   cliPath?: string | null
   packageManager?: string | null
+}
+
+interface PendingCliUpdate extends CliUpdateInfo {
+  key: string
 }
 
 /** Map CLI type to the binary name used by the package manager */
@@ -80,17 +85,36 @@ const CLI_STATUS_QUERY_KEYS: Record<CliUpdateInfo['type'], readonly string[]> = 
 }
 
 /** Map CLI type to its auto-update preference key */
-const CLI_AUTO_UPDATE_PREF_KEYS: Record<CliUpdateInfo['type'], string> = {
+const CLI_AUTO_UPDATE_PREF_KEYS: Record<
+  CliUpdateInfo['type'],
+  keyof AppPreferences
+> = {
   claude: 'auto_update_claude_cli',
   gh: 'auto_update_gh_cli',
   codex: 'auto_update_codex_cli',
   opencode: 'auto_update_opencode_cli',
 }
 
+function getCliUpdateKey(
+  type: CliUpdateInfo['type'],
+  currentVersion: string,
+  latestVersion: string
+) {
+  return `${type}:${currentVersion}→${latestVersion}`
+}
+
+function canAutoInstallCli(
+  update: CliUpdateInfo,
+  preferences: AppPreferences | undefined
+) {
+  const prefKey = CLI_AUTO_UPDATE_PREF_KEYS[update.type]
+  return preferences?.[prefKey] === true && update.cliSource === 'jean'
+}
+
 /**
  * Hook that checks for CLI updates on startup and periodically (every hour).
  * Shows toast notifications when updates are detected.
- * When auto-update is enabled for a CLI (jean-managed only), silently installs the latest version.
+ * When auto-update is enabled for a Jean-managed installer, silently installs the pinned version.
  * Should be called once in App.tsx.
  */
 export function useCliVersionCheck() {
@@ -130,7 +154,8 @@ export function useCliVersionCheck() {
 
   // Track which update pairs we've already shown notifications for or auto-installed
   // Format: "type:currentVersion→latestVersion"
-  const notifiedRef = useRef<Set<string>>(new Set())
+  const handledRef = useRef<Set<string>>(new Set())
+  const autoInstallInFlightRef = useRef<Set<string>>(new Set())
   const isInitialCheckRef = useRef(true)
 
   useEffect(() => {
@@ -146,7 +171,7 @@ export function useCliVersionCheck() {
       opencodeVersionsLoading
     if (isLoading) return
 
-    const updates: CliUpdateInfo[] = []
+    const updates: PendingCliUpdate[] = []
 
     // Check Claude CLI
     if (
@@ -159,10 +184,17 @@ export function useCliVersionCheck() {
         latestStable &&
         isNewerVersion(latestStable.version, claudeStatus.version)
       ) {
-        const key = `claude:${claudeStatus.version}→${latestStable.version}`
-        if (!notifiedRef.current.has(key)) {
-          notifiedRef.current.add(key)
+        const key = getCliUpdateKey(
+          'claude',
+          claudeStatus.version,
+          latestStable.version
+        )
+        if (
+          !handledRef.current.has(key) &&
+          !autoInstallInFlightRef.current.has(key)
+        ) {
           updates.push({
+            key,
             type: 'claude',
             currentVersion: claudeStatus.version,
             latestVersion: latestStable.version,
@@ -181,10 +213,13 @@ export function useCliVersionCheck() {
         latestStable &&
         isNewerVersion(latestStable.version, ghStatus.version)
       ) {
-        const key = `gh:${ghStatus.version}→${latestStable.version}`
-        if (!notifiedRef.current.has(key)) {
-          notifiedRef.current.add(key)
+        const key = getCliUpdateKey('gh', ghStatus.version, latestStable.version)
+        if (
+          !handledRef.current.has(key) &&
+          !autoInstallInFlightRef.current.has(key)
+        ) {
           updates.push({
+            key,
             type: 'gh',
             currentVersion: ghStatus.version,
             latestVersion: latestStable.version,
@@ -207,10 +242,17 @@ export function useCliVersionCheck() {
         latestStable &&
         isNewerVersion(latestStable.version, codexStatus.version)
       ) {
-        const key = `codex:${codexStatus.version}→${latestStable.version}`
-        if (!notifiedRef.current.has(key)) {
-          notifiedRef.current.add(key)
+        const key = getCliUpdateKey(
+          'codex',
+          codexStatus.version,
+          latestStable.version
+        )
+        if (
+          !handledRef.current.has(key) &&
+          !autoInstallInFlightRef.current.has(key)
+        ) {
           updates.push({
+            key,
             type: 'codex',
             currentVersion: codexStatus.version,
             latestVersion: latestStable.version,
@@ -233,10 +275,17 @@ export function useCliVersionCheck() {
         latestStable &&
         isNewerVersion(latestStable.version, opencodeStatus.version)
       ) {
-        const key = `opencode:${opencodeStatus.version}→${latestStable.version}`
-        if (!notifiedRef.current.has(key)) {
-          notifiedRef.current.add(key)
+        const key = getCliUpdateKey(
+          'opencode',
+          opencodeStatus.version,
+          latestStable.version
+        )
+        if (
+          !handledRef.current.has(key) &&
+          !autoInstallInFlightRef.current.has(key)
+        ) {
           updates.push({
+            key,
             type: 'opencode',
             currentVersion: opencodeStatus.version,
             latestVersion: latestStable.version,
@@ -251,30 +300,41 @@ export function useCliVersionCheck() {
     if (updates.length > 0) {
       logger.info('CLI updates available', { updates })
 
-      // Split updates into auto-install (jean-managed + auto-update enabled) vs manual toast
-      const autoInstallUpdates: CliUpdateInfo[] = []
-      const manualUpdates: CliUpdateInfo[] = []
+      // Split updates into silent auto-install (Jean-managed + auto-update enabled) vs manual toast.
+      const autoInstallUpdates: PendingCliUpdate[] = []
+      const manualUpdates: PendingCliUpdate[] = []
 
       for (const update of updates) {
-        const prefKey = CLI_AUTO_UPDATE_PREF_KEYS[update.type] as keyof typeof preferences
-        const isAutoUpdate = preferences?.[prefKey] === true
-        const isJeanManaged = update.cliSource === 'jean'
-
-        if (isAutoUpdate && isJeanManaged) {
+        if (canAutoInstallCli(update, preferences)) {
           autoInstallUpdates.push(update)
         } else {
           manualUpdates.push(update)
         }
       }
 
-      // Auto-install: fire all in parallel with loading toasts
-      for (const update of autoInstallUpdates) {
-        autoInstallCli(update, queryClient)
+      const isInitialCheck = isInitialCheckRef.current
+
+      for (const update of manualUpdates) {
+        handledRef.current.add(update.key)
+      }
+
+      // Auto-install: keep launch-time work serialized to avoid startup contention.
+      if (autoInstallUpdates.length > 0) {
+        for (const update of autoInstallUpdates) {
+          autoInstallInFlightRef.current.add(update.key)
+        }
+
+        void processAutoInstallQueue(
+          autoInstallUpdates,
+          queryClient,
+          handledRef.current,
+          autoInstallInFlightRef.current
+        )
       }
 
       // Manual: show interactive toasts (with delay on initial check)
       if (manualUpdates.length > 0) {
-        if (isInitialCheckRef.current) {
+        if (isInitialCheck) {
           setTimeout(() => {
             showUpdateToasts(manualUpdates)
           }, 5000)
@@ -320,8 +380,8 @@ export function useCliVersionCheck() {
  */
 async function autoInstallCli(
   update: CliUpdateInfo,
-  queryClient: ReturnType<typeof import('@tanstack/react-query').useQueryClient>
-) {
+  queryClient: QueryClient
+): Promise<boolean> {
   const cliName = CLI_DISPLAY_NAMES[update.type]
   const toastId = `cli-auto-update-${update.type}`
   const command = CLI_INSTALL_COMMANDS[update.type]
@@ -333,8 +393,8 @@ async function autoInstallCli(
   })
 
   try {
-    await invoke(command, { version: null })
-    queryClient.invalidateQueries({ queryKey: statusQueryKey })
+    await invoke(command, { version: update.latestVersion })
+    await queryClient.invalidateQueries({ queryKey: statusQueryKey })
     toast.success(`${cliName} updated`, {
       id: toastId,
       description: `v${update.currentVersion} → v${update.latestVersion}`,
@@ -343,6 +403,7 @@ async function autoInstallCli(
       from: update.currentVersion,
       to: update.latestVersion,
     })
+    return true
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     toast.error(`Failed to update ${cliName}`, {
@@ -350,6 +411,30 @@ async function autoInstallCli(
       description: message,
     })
     logger.error(`[CliVersionCheck] Auto-update failed for ${cliName}`, { error: message })
+    return false
+  }
+}
+
+async function processAutoInstallQueue(
+  updates: PendingCliUpdate[],
+  queryClient: QueryClient,
+  handledKeys: Set<string>,
+  autoInstallInFlightKeys: Set<string>
+) {
+  for (const update of updates) {
+    let didInstall = false
+
+    try {
+      didInstall = await autoInstallCli(update, queryClient)
+    } finally {
+      autoInstallInFlightKeys.delete(update.key)
+    }
+
+    handledKeys.add(update.key)
+
+    if (!didInstall) {
+      showUpdateToasts([update])
+    }
   }
 }
 
