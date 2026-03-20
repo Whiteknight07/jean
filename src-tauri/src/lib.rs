@@ -224,6 +224,14 @@ pub struct AppPreferences {
     pub opencode_cli_source: String, // OpenCode CLI source: "jean" (managed) or "path" (system PATH)
     #[serde(default = "default_cli_source")]
     pub gh_cli_source: String, // GitHub CLI source: "jean" (managed) or "path" (system PATH)
+    #[serde(default)]
+    pub auto_update_claude_cli: bool, // Auto-update Claude CLI on app launch
+    #[serde(default)]
+    pub auto_update_codex_cli: bool, // Auto-update Codex CLI on app launch
+    #[serde(default)]
+    pub auto_update_opencode_cli: bool, // Auto-update OpenCode CLI on app launch
+    #[serde(default)]
+    pub auto_update_gh_cli: bool, // Auto-update GitHub CLI on app launch
 }
 
 fn default_true() -> Option<bool> {
@@ -1146,6 +1154,10 @@ impl Default for AppPreferences {
             codex_cli_source: default_cli_source(),
             opencode_cli_source: default_cli_source(),
             gh_cli_source: default_cli_source(),
+            auto_update_claude_cli: false,
+            auto_update_codex_cli: false,
+            auto_update_opencode_cli: false,
+            auto_update_gh_cli: false,
         }
     }
 }

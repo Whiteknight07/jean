@@ -858,6 +858,19 @@ export const GeneralPane: React.FC = () => {
                 </Select>
               </InlineField>
             )}
+            {preferences?.claude_cli_source === 'jean' && cliStatus?.installed && (
+              <InlineField
+                label="Auto-update on launch"
+                description="Automatically install latest version when Jean starts"
+              >
+                <Switch
+                  checked={preferences?.auto_update_claude_cli ?? false}
+                  onCheckedChange={(checked) =>
+                    patchPreferences.mutate({ auto_update_claude_cli: checked })
+                  }
+                />
+              </InlineField>
+            )}
           </div>
         </SettingsSection>
       )}
@@ -982,6 +995,19 @@ export const GeneralPane: React.FC = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </InlineField>
+            )}
+            {preferences?.gh_cli_source === 'jean' && ghStatus?.installed && (
+              <InlineField
+                label="Auto-update on launch"
+                description="Automatically install latest version when Jean starts"
+              >
+                <Switch
+                  checked={preferences?.auto_update_gh_cli ?? false}
+                  onCheckedChange={(checked) =>
+                    patchPreferences.mutate({ auto_update_gh_cli: checked })
+                  }
+                />
               </InlineField>
             )}
           </div>
@@ -1117,6 +1143,19 @@ export const GeneralPane: React.FC = () => {
                 </Select>
               </InlineField>
             )}
+            {preferences?.codex_cli_source === 'jean' && codexStatus?.installed && (
+              <InlineField
+                label="Auto-update on launch"
+                description="Automatically install latest version when Jean starts"
+              >
+                <Switch
+                  checked={preferences?.auto_update_codex_cli ?? false}
+                  onCheckedChange={(checked) =>
+                    patchPreferences.mutate({ auto_update_codex_cli: checked })
+                  }
+                />
+              </InlineField>
+            )}
           </div>
         </SettingsSection>
       )}
@@ -1248,6 +1287,19 @@ export const GeneralPane: React.FC = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </InlineField>
+            )}
+            {preferences?.opencode_cli_source === 'jean' && opencodeStatus?.installed && (
+              <InlineField
+                label="Auto-update on launch"
+                description="Automatically install latest version when Jean starts"
+              >
+                <Switch
+                  checked={preferences?.auto_update_opencode_cli ?? false}
+                  onCheckedChange={(checked) =>
+                    patchPreferences.mutate({ auto_update_opencode_cli: checked })
+                  }
+                />
               </InlineField>
             )}
           </div>

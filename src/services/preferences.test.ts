@@ -156,6 +156,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
       vi.mocked(invoke).mockResolvedValueOnce(mockPreferences)
 
@@ -277,6 +281,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
       vi.mocked(invoke).mockResolvedValueOnce(prefsWithOldBinding)
 
@@ -370,6 +378,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
       vi.mocked(invoke).mockResolvedValueOnce(prefsWithDeprecatedFastModel)
 
@@ -464,6 +476,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
 
       const { result } = renderHook(() => useSavePreferences(), {
@@ -560,6 +576,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
 
       const { result } = renderHook(() => useSavePreferences(), {
@@ -656,6 +676,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
 
       const { result } = renderHook(() => useSavePreferences(), {
@@ -750,6 +774,10 @@ describe('preferences service', () => {
         codex_cli_source: 'jean',
         opencode_cli_source: 'jean',
         gh_cli_source: 'jean',
+        auto_update_claude_cli: false,
+        auto_update_codex_cli: false,
+        auto_update_opencode_cli: false,
+        auto_update_gh_cli: false,
       }
 
       const { result } = renderHook(() => useSavePreferences(), {
