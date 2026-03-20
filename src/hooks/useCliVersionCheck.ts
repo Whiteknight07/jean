@@ -53,6 +53,29 @@ interface PendingCliUpdate extends CliUpdateInfo {
   key: string
 }
 
+interface CliStatusSnapshot {
+  installed?: boolean
+  version?: string | null
+  path?: string | null
+}
+
+interface CliVersionSnapshot {
+  version: string
+  prerelease: boolean
+}
+
+interface CliPathInfoSnapshot {
+  package_manager?: string | null
+}
+
+interface CliUpdateCandidate {
+  type: CliUpdateInfo['type']
+  status: CliStatusSnapshot | undefined
+  versions: CliVersionSnapshot[] | undefined
+  cliSource: CliUpdateInfo['cliSource']
+  pathInfo: CliPathInfoSnapshot | undefined
+}
+
 /** Map CLI type to the binary name used by the package manager */
 const CLI_BINARY_NAMES: Record<CliUpdateInfo['type'], string> = {
   claude: 'claude-code',
@@ -111,6 +134,61 @@ function canAutoInstallCli(
   return preferences?.[prefKey] === true && update.cliSource === 'jean'
 }
 
+function collectPendingUpdates(
+  candidates: CliUpdateCandidate[],
+  handledKeys: Set<string>,
+  autoInstallInFlightKeys: Set<string>
+): PendingCliUpdate[] {
+  const updates: PendingCliUpdate[] = []
+
+  for (const candidate of candidates) {
+    const { type, status, versions, cliSource, pathInfo } = candidate
+    if (!status?.installed || !status.version || !versions?.length) {
+      continue
+    }
+
+    const latestStable = versions.find(version => !version.prerelease)
+    if (!latestStable || !isNewerVersion(latestStable.version, status.version)) {
+      continue
+    }
+
+    const key = getCliUpdateKey(type, status.version, latestStable.version)
+    if (handledKeys.has(key) || autoInstallInFlightKeys.has(key)) {
+      continue
+    }
+
+    updates.push({
+      key,
+      type,
+      currentVersion: status.version,
+      latestVersion: latestStable.version,
+      cliSource,
+      cliPath: status.path,
+      packageManager: pathInfo?.package_manager,
+    })
+  }
+
+  return updates
+}
+
+function splitUpdatesByInstallMode(
+  updates: PendingCliUpdate[],
+  preferences: AppPreferences | undefined
+) {
+  const autoInstallUpdates: PendingCliUpdate[] = []
+  const manualUpdates: PendingCliUpdate[] = []
+
+  for (const update of updates) {
+    if (canAutoInstallCli(update, preferences)) {
+      autoInstallUpdates.push(update)
+    } else {
+      manualUpdates.push(update)
+    }
+  }
+
+  return { autoInstallUpdates, manualUpdates }
+}
+
 /**
  * Hook that checks for CLI updates on startup and periodically (every hour).
  * Shows toast notifications when updates are detected.
@@ -160,157 +238,61 @@ export function useCliVersionCheck() {
 
   useEffect(() => {
     // Wait until all data is loaded
-    const isLoading =
-      claudeLoading ||
-      ghLoading ||
-      codexLoading ||
-      opencodeLoading ||
-      claudeVersionsLoading ||
-      ghVersionsLoading ||
-      codexVersionsLoading ||
-      opencodeVersionsLoading
+    const isLoading = [
+      claudeLoading,
+      ghLoading,
+      codexLoading,
+      opencodeLoading,
+      claudeVersionsLoading,
+      ghVersionsLoading,
+      codexVersionsLoading,
+      opencodeVersionsLoading,
+    ].some(Boolean)
     if (isLoading) return
 
-    const updates: PendingCliUpdate[] = []
-
-    // Check Claude CLI
-    if (
-      claudeStatus?.installed &&
-      claudeStatus.version &&
-      claudeVersions?.length
-    ) {
-      const latestStable = claudeVersions.find(v => !v.prerelease)
-      if (
-        latestStable &&
-        isNewerVersion(latestStable.version, claudeStatus.version)
-      ) {
-        const key = getCliUpdateKey(
-          'claude',
-          claudeStatus.version,
-          latestStable.version
-        )
-        if (
-          !handledRef.current.has(key) &&
-          !autoInstallInFlightRef.current.has(key)
-        ) {
-          updates.push({
-            key,
-            type: 'claude',
-            currentVersion: claudeStatus.version,
-            latestVersion: latestStable.version,
-            cliSource: preferences?.claude_cli_source,
-            cliPath: claudeStatus.path,
-            packageManager: claudePathInfo?.package_manager,
-          })
-        }
-      }
-    }
-
-    // Check GitHub CLI
-    if (ghStatus?.installed && ghStatus.version && ghVersions?.length) {
-      const latestStable = ghVersions.find(v => !v.prerelease)
-      if (
-        latestStable &&
-        isNewerVersion(latestStable.version, ghStatus.version)
-      ) {
-        const key = getCliUpdateKey('gh', ghStatus.version, latestStable.version)
-        if (
-          !handledRef.current.has(key) &&
-          !autoInstallInFlightRef.current.has(key)
-        ) {
-          updates.push({
-            key,
-            type: 'gh',
-            currentVersion: ghStatus.version,
-            latestVersion: latestStable.version,
-            cliSource: preferences?.gh_cli_source,
-            cliPath: ghStatus.path,
-            packageManager: ghPathInfo?.package_manager,
-          })
-        }
-      }
-    }
-
-    // Check Codex CLI
-    if (
-      codexStatus?.installed &&
-      codexStatus.version &&
-      codexVersions?.length
-    ) {
-      const latestStable = codexVersions.find(v => !v.prerelease)
-      if (
-        latestStable &&
-        isNewerVersion(latestStable.version, codexStatus.version)
-      ) {
-        const key = getCliUpdateKey(
-          'codex',
-          codexStatus.version,
-          latestStable.version
-        )
-        if (
-          !handledRef.current.has(key) &&
-          !autoInstallInFlightRef.current.has(key)
-        ) {
-          updates.push({
-            key,
-            type: 'codex',
-            currentVersion: codexStatus.version,
-            latestVersion: latestStable.version,
-            cliSource: preferences?.codex_cli_source,
-            cliPath: codexStatus.path,
-            packageManager: codexPathInfo?.package_manager,
-          })
-        }
-      }
-    }
-
-    // Check OpenCode CLI
-    if (
-      opencodeStatus?.installed &&
-      opencodeStatus.version &&
-      opencodeVersions?.length
-    ) {
-      const latestStable = opencodeVersions.find(v => !v.prerelease)
-      if (
-        latestStable &&
-        isNewerVersion(latestStable.version, opencodeStatus.version)
-      ) {
-        const key = getCliUpdateKey(
-          'opencode',
-          opencodeStatus.version,
-          latestStable.version
-        )
-        if (
-          !handledRef.current.has(key) &&
-          !autoInstallInFlightRef.current.has(key)
-        ) {
-          updates.push({
-            key,
-            type: 'opencode',
-            currentVersion: opencodeStatus.version,
-            latestVersion: latestStable.version,
-            cliSource: preferences?.opencode_cli_source,
-            cliPath: opencodeStatus.path,
-            packageManager: opencodePathInfo?.package_manager,
-          })
-        }
-      }
-    }
+    const updates = collectPendingUpdates(
+      [
+        {
+          type: 'claude',
+          status: claudeStatus,
+          versions: claudeVersions,
+          cliSource: preferences?.claude_cli_source,
+          pathInfo: claudePathInfo,
+        },
+        {
+          type: 'gh',
+          status: ghStatus,
+          versions: ghVersions,
+          cliSource: preferences?.gh_cli_source,
+          pathInfo: ghPathInfo,
+        },
+        {
+          type: 'codex',
+          status: codexStatus,
+          versions: codexVersions,
+          cliSource: preferences?.codex_cli_source,
+          pathInfo: codexPathInfo,
+        },
+        {
+          type: 'opencode',
+          status: opencodeStatus,
+          versions: opencodeVersions,
+          cliSource: preferences?.opencode_cli_source,
+          pathInfo: opencodePathInfo,
+        },
+      ],
+      handledRef.current,
+      autoInstallInFlightRef.current
+    )
 
     if (updates.length > 0) {
       logger.info('CLI updates available', { updates })
 
       // Split updates into silent auto-install (Jean-managed + auto-update enabled) vs manual toast.
-      const autoInstallUpdates: PendingCliUpdate[] = []
-      const manualUpdates: PendingCliUpdate[] = []
-
-      for (const update of updates) {
-        if (canAutoInstallCli(update, preferences)) {
-          autoInstallUpdates.push(update)
-        } else {
-          manualUpdates.push(update)
-        }
-      }
+      const { autoInstallUpdates, manualUpdates } = splitUpdatesByInstallMode(
+        updates,
+        preferences
+      )
 
       const isInitialCheck = isInitialCheckRef.current
 
