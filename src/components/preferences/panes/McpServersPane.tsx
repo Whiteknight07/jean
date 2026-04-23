@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from '@/components/ui/tooltip'
+import { BackendLabel } from '@/components/ui/backend-label'
 import { cn } from '@/lib/utils'
 import { usePreferences, usePatchPreferences } from '@/services/preferences'
 import {
@@ -16,25 +17,14 @@ import {
   getNewServersToAutoEnable,
   useAllBackendsMcpHealth,
   groupServersByBackend,
-  BACKEND_LABELS,
+  mcpKey,
+  migrateLegacyMcpKeys,
 } from '@/services/mcp'
 import { useInstalledBackends } from '@/hooks/useInstalledBackends'
 import { useChatStore } from '@/store/chat-store'
 import type { McpHealthStatus } from '@/types/chat'
 import type { CliBackend } from '@/types/preferences'
-
-const SettingsSection: React.FC<{
-  title: string
-  children: React.ReactNode
-}> = ({ title, children }) => (
-  <div className="space-y-4">
-    <div>
-      <h3 className="text-lg font-medium text-foreground">{title}</h3>
-      <Separator className="mt-2" />
-    </div>
-    {children}
-  </div>
-)
+import { SettingsSection } from '../SettingsSection'
 
 function mcpAuthHint(backend: CliBackend): string {
   switch (backend) {
@@ -42,6 +32,8 @@ function mcpAuthHint(backend: CliBackend): string {
       return "Run 'codex mcp auth' in your terminal to authenticate"
     case 'opencode':
       return "Run 'opencode mcp auth' in your terminal to authenticate"
+    case 'cursor':
+      return "Run 'cursor-agent mcp login <server>' in your terminal to authenticate"
     default:
       return "Run 'claude /mcp' in your terminal to authenticate"
   }
@@ -130,7 +122,7 @@ export const McpServersPane: React.FC = () => {
     statuses: healthStatuses,
     isFetching: isHealthChecking,
     refetchAll: checkHealth,
-  } = useAllBackendsMcpHealth(installedBackends)
+  } = useAllBackendsMcpHealth(installedBackends, activeWorktreePath)
 
   // Re-read MCP config from disk and trigger health check every time this pane is opened
   useEffect(() => {
@@ -144,27 +136,45 @@ export const McpServersPane: React.FC = () => {
   // Auto-enable newly discovered (non-disabled) servers, but not ones the user has previously disabled
   useEffect(() => {
     if (!preferences || !mcpServers) return
-    const allServerNames = mcpServers.filter(s => !s.disabled).map(s => s.name)
+
+    // Migrate legacy bare-name keys to composite keys
+    let currentEnabled = enabledServers
+    let currentKnown = knownServers
+    const enabledMigration = migrateLegacyMcpKeys(enabledServers, mcpServers)
+    const knownMigration = migrateLegacyMcpKeys(knownServers, mcpServers)
+    if (enabledMigration.changed) currentEnabled = enabledMigration.migrated
+    if (knownMigration.changed) currentKnown = knownMigration.migrated
+
+    const allServerKeys = mcpServers
+      .filter(s => !s.disabled)
+      .map(s => mcpKey(s.backend, s.name))
     const newServers = getNewServersToAutoEnable(
       mcpServers,
-      enabledServers,
-      knownServers
+      currentEnabled,
+      currentKnown
     )
-    const updatedKnown = [...new Set([...knownServers, ...allServerNames])]
-    const knownChanged = updatedKnown.length !== knownServers.length
-    if (newServers.length > 0 || knownChanged) {
+    const updatedKnown = [...new Set([...currentKnown, ...allServerKeys])]
+    const knownChanged = updatedKnown.length !== currentKnown.length
+
+    if (
+      newServers.length > 0 ||
+      knownChanged ||
+      enabledMigration.changed ||
+      knownMigration.changed
+    ) {
       patchPreferences.mutate({
-        default_enabled_mcp_servers: [...enabledServers, ...newServers],
+        default_enabled_mcp_servers: [...currentEnabled, ...newServers],
         known_mcp_servers: updatedKnown,
       })
     }
   }, [mcpServers]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggle = (serverName: string) => {
+  const handleToggle = (backend: CliBackend, serverName: string) => {
     if (!preferences) return
-    const updated = enabledServers.includes(serverName)
-      ? enabledServers.filter(n => n !== serverName)
-      : [...enabledServers, serverName]
+    const key = mcpKey(backend, serverName)
+    const updated = enabledServers.includes(key)
+      ? enabledServers.filter(n => n !== key)
+      : [...enabledServers, key]
     patchPreferences.mutate({ default_enabled_mcp_servers: updated })
   }
 
@@ -176,7 +186,10 @@ export const McpServersPane: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsSection title="Default MCP Servers">
+      <SettingsSection
+        title="Default MCP Servers"
+        anchorId="pref-mcp-section-default-servers"
+      >
         <p className="text-sm text-muted-foreground">
           Selected servers will be enabled by default in new sessions. You can
           override per-session from the toolbar.
@@ -198,7 +211,7 @@ export const McpServersPane: React.FC = () => {
                 {showSectionHeaders && (
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      {BACKEND_LABELS[backend]}
+                      <BackendLabel backend={backend} />
                     </span>
                     <Separator className="flex-1" />
                   </div>
@@ -215,9 +228,9 @@ export const McpServersPane: React.FC = () => {
                       id={`mcp-${backend}-${server.name}`}
                       checked={
                         !server.disabled &&
-                        enabledServers.includes(server.name)
+                        enabledServers.includes(mcpKey(backend, server.name))
                       }
-                      onCheckedChange={() => handleToggle(server.name)}
+                      onCheckedChange={() => handleToggle(backend, server.name)}
                       disabled={server.disabled}
                     />
                     <Label
@@ -230,7 +243,7 @@ export const McpServersPane: React.FC = () => {
                       {server.name}
                     </Label>
                     <HealthIndicator
-                      status={healthStatuses[server.name]}
+                      status={healthStatuses[mcpKey(backend, server.name)]}
                       isChecking={isHealthChecking}
                       backend={backend}
                     />

@@ -1,23 +1,10 @@
 import React, { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader2 } from 'lucide-react'
 import { usePreferences, usePatchPreferences } from '@/services/preferences'
-
-const SettingsSection: React.FC<{
-  title: string
-  children: React.ReactNode
-}> = ({ title, children }) => (
-  <div className="space-y-4">
-    <div>
-      <h3 className="text-lg font-medium text-foreground">{title}</h3>
-      <Separator className="mt-2" />
-    </div>
-    {children}
-  </div>
-)
+import { SettingsSection } from '../SettingsSection'
 
 const InlineField: React.FC<{
   label: string
@@ -39,7 +26,9 @@ export const IntegrationsPane: React.FC = () => {
   const { data: preferences } = usePreferences()
   const patchPreferences = usePatchPreferences()
 
-  const [localLinearApiKey, setLocalLinearApiKey] = useState<string | null>(null)
+  const [localLinearApiKey, setLocalLinearApiKey] = useState<string | null>(
+    null
+  )
   const [showLinearApiKey, setShowLinearApiKey] = useState(false)
 
   const currentGlobalKey = preferences?.linear_api_key ?? ''
@@ -64,7 +53,10 @@ export const IntegrationsPane: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsSection title="Linear">
+      <SettingsSection
+        title="Linear"
+        anchorId="pref-integrations-section-linear"
+      >
         <InlineField
           label="Personal API Key"
           description={
@@ -88,7 +80,7 @@ export const IntegrationsPane: React.FC = () => {
               placeholder="lin_api_..."
               value={displayedLinearApiKey}
               onChange={e => setLocalLinearApiKey(e.target.value)}
-              className="flex-1 text-sm font-mono"
+              className="flex-1 text-base md:text-sm font-mono"
             />
             <Button
               variant="outline"

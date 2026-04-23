@@ -48,12 +48,17 @@ import {
 import { cn } from '@/lib/utils'
 import { generateId } from '@/lib/uuid'
 import { getFilename } from '@/lib/path-utils'
+import { getFileLineStats } from '@/lib/diff-stats'
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from '@/components/ui/tooltip'
-import { getGitDiff, revertFile, triggerImmediateGitPoll } from '@/services/git-status'
+import {
+  getGitDiff,
+  revertFile,
+  triggerImmediateGitPoll,
+} from '@/services/git-status'
 import { invoke } from '@/lib/transport'
 import { toast } from 'sonner'
 import { resolveMagicPromptProvider } from '@/types/preferences'
@@ -155,7 +160,7 @@ const CommentInputBar = memo(function CommentInputBar({
         onChange={e => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What should I do with this code?"
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-sm"
       />
       <button
         type="button"
@@ -212,8 +217,11 @@ export function GitDiffModal({
   const [diff, setDiff] = useState<GitDiff | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [cachedBranchStats, setCachedBranchStats] = useState<DiffStats | null>(null)
-  const [cachedUncommittedStats, setCachedUncommittedStats] = useState<DiffStats | null>(null)
+  const [cachedBranchStats, setCachedBranchStats] = useState<DiffStats | null>(
+    null
+  )
+  const [cachedUncommittedStats, setCachedUncommittedStats] =
+    useState<DiffStats | null>(null)
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(
     window.innerWidth < 768 ? 'unified' : 'split'
   )
@@ -298,10 +306,10 @@ export function GitDiffModal({
   const [isCommitting, setIsCommitting] = useState(false)
   const handleCommitFromDiff = useCallback(async () => {
     if (!diffRequest || isCommitting) return
-    const { gitDiffSelectedFiles, clearGitDiffSelectedFiles } = useUIStore.getState()
-    const specificFiles = gitDiffSelectedFiles.size > 0
-      ? Array.from(gitDiffSelectedFiles)
-      : null
+    const { gitDiffSelectedFiles, clearGitDiffSelectedFiles } =
+      useUIStore.getState()
+    const specificFiles =
+      gitDiffSelectedFiles.size > 0 ? Array.from(gitDiffSelectedFiles) : null
 
     setIsCommitting(true)
     const toastId = toast.loading(
@@ -323,7 +331,8 @@ export function GitDiffModal({
             'commit_message_provider',
             preferences?.default_provider
           ),
-          reasoningEffort: preferences?.magic_prompt_efforts?.commit_message_effort ?? null,
+          reasoningEffort:
+            preferences?.magic_prompt_efforts?.commit_message_effort ?? null,
           specificFiles,
         }
       )
@@ -345,7 +354,10 @@ export function GitDiffModal({
   // Cache backend stats per tab so they persist across tab switches
   useEffect(() => {
     if (!diff) return
-    const stats: DiffStats = { added: diff.total_additions, removed: diff.total_deletions }
+    const stats: DiffStats = {
+      added: diff.total_additions,
+      removed: diff.total_deletions,
+    }
     if (activeDiffType === 'branch') setCachedBranchStats(stats)
     else if (activeDiffType === 'uncommitted') setCachedUncommittedStats(stats)
   }, [diff, activeDiffType])
@@ -544,13 +556,7 @@ export function GitDiffModal({
   const flattenedFiles = useMemo(() => {
     const fromPatch = parsedFiles.flatMap((patch, patchIndex) =>
       patch.files.map((fileDiff, fileIndex) => {
-        // Pre-compute stats from hunks
-        let additions = 0
-        let deletions = 0
-        for (const hunk of fileDiff.hunks) {
-          additions += hunk.additionCount
-          deletions += hunk.deletionCount
-        }
+        const { additions, deletions } = getFileLineStats(fileDiff, diff?.files)
         return {
           fileDiff,
           fileName: fileDiff.name || fileDiff.prevName || 'unknown',
@@ -567,6 +573,7 @@ export function GitDiffModal({
       const statusToType: Record<string, string> = {
         deleted: 'deleted',
         added: 'new',
+        untracked: 'new',
         renamed: 'rename-changed',
         modified: 'change',
       }
@@ -593,7 +600,6 @@ export function GitDiffModal({
 
     return fromPatch
   }, [parsedFiles, diff?.files])
-
 
   // Filter files by search pattern
   const filteredFiles = useMemo(() => {
@@ -775,7 +781,8 @@ export function GitDiffModal({
     }
 
     window.addEventListener('git-commit-completed', handleCommitCompleted)
-    return () => window.removeEventListener('git-commit-completed', handleCommitCompleted)
+    return () =>
+      window.removeEventListener('git-commit-completed', handleCommitCompleted)
   }, [diffRequest, activeDiffType, loadDiff])
 
   // Show switcher whenever both diff contexts are available, even when counts are zero.
@@ -783,8 +790,10 @@ export function GitDiffModal({
   const hasBranchDiff = branchStats !== undefined
   const showSwitcher = hasUncommitted && hasBranchDiff
   // Prefer cached stats (from loaded diff) over polling stats for consistency across tab switches
-  const uncommittedAdded = cachedUncommittedStats?.added ?? uncommittedStats?.added ?? 0
-  const uncommittedRemoved = cachedUncommittedStats?.removed ?? uncommittedStats?.removed ?? 0
+  const uncommittedAdded =
+    cachedUncommittedStats?.added ?? uncommittedStats?.added ?? 0
+  const uncommittedRemoved =
+    cachedUncommittedStats?.removed ?? uncommittedStats?.removed ?? 0
   const branchAdded = cachedBranchStats?.added ?? branchStats?.added ?? 0
   const branchRemoved = cachedBranchStats?.removed ?? branchStats?.removed ?? 0
 
@@ -895,11 +904,13 @@ export function GitDiffModal({
               </>
             )}
             <div className="flex items-center gap-2 sm:gap-3">
-              {activeDiffType === 'uncommitted' && gitDiffSelectedFiles.size > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  {gitDiffSelectedFiles.size} file{gitDiffSelectedFiles.size !== 1 ? 's' : ''} selected
-                </span>
-              )}
+              {activeDiffType === 'uncommitted' &&
+                gitDiffSelectedFiles.size > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {gitDiffSelectedFiles.size} file
+                    {gitDiffSelectedFiles.size !== 1 ? 's' : ''} selected
+                  </span>
+                )}
               {/* View mode toggle */}
               <div className="flex items-center bg-muted rounded-lg p-1">
                 <Tooltip>
@@ -949,7 +960,8 @@ export function GitDiffModal({
                       className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-black text-white dark:bg-yellow-500 dark:text-black hover:bg-black/80 dark:hover:bg-yellow-400 rounded-md text-xs font-medium transition-colors"
                     >
                       <Play className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Execute</span> ({comments.length})
+                      <span className="hidden sm:inline">Execute</span> (
+                      {comments.length})
                     </button>
                   )}
                   {onAddToPrompt && (
@@ -966,32 +978,37 @@ export function GitDiffModal({
               )}
             </div>
             <div className="ml-auto flex items-center gap-2">
-              {activeDiffType === 'uncommitted' && diff && filteredFiles.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isCommitting}
-                      onClick={handleCommitFromDiff}
-                      className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium transition-colors"
-                    >
-                      {isCommitting ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <GitCommitHorizontal className="h-3.5 w-3.5" />
-                      )}
-                      <span className="hidden sm:inline">
-                        Commit{gitDiffSelectedFiles.size > 0 ? ` (${gitDiffSelectedFiles.size})` : ''}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {gitDiffSelectedFiles.size > 0
-                      ? `Commit ${gitDiffSelectedFiles.size} selected file${gitDiffSelectedFiles.size !== 1 ? 's' : ''}`
-                      : 'Commit all changes'}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {activeDiffType === 'uncommitted' &&
+                diff &&
+                filteredFiles.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isCommitting}
+                        onClick={handleCommitFromDiff}
+                        className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium transition-colors"
+                      >
+                        {isCommitting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <GitCommitHorizontal className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline">
+                          Commit
+                          {gitDiffSelectedFiles.size > 0
+                            ? ` (${gitDiffSelectedFiles.size})`
+                            : ''}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {gitDiffSelectedFiles.size > 0
+                        ? `Commit ${gitDiffSelectedFiles.size} selected file${gitDiffSelectedFiles.size !== 1 ? 's' : ''}`
+                        : 'Commit all changes'}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               {/* Mobile sidebar toggle */}
               {isMobile && hasFiles && activeDiffType !== 'commits' && (
                 <Tooltip>
@@ -1103,10 +1120,7 @@ export function GitDiffModal({
                   {/* Mobile: file selector overlay */}
                   {isMobile && showMobileSidebar && (
                     <div className="absolute inset-0 z-20 bg-background flex flex-col">
-                      <div
-                        ref={fileListRef}
-                        className="flex-1 overflow-y-auto"
-                      >
+                      <div ref={fileListRef} className="flex-1 overflow-y-auto">
                         {flattenedFiles.length > 0 && (
                           <div className="sticky top-0 z-10 bg-background border-b border-border pb-2">
                             <div className="relative">
@@ -1119,7 +1133,7 @@ export function GitDiffModal({
                                   setSelectedFileIndex(0)
                                 }}
                                 placeholder="Filter files..."
-                                className="w-full bg-muted text-sm outline-none border border-border pl-7 pr-2 py-2.5 placeholder:text-muted-foreground focus:border-ring"
+                                className="w-full bg-muted text-base outline-none border border-border pl-7 pr-2 py-2.5 placeholder:text-muted-foreground focus:border-ring md:text-sm"
                               />
                             </div>
                           </div>
@@ -1130,7 +1144,9 @@ export function GitDiffModal({
                             const displayName =
                               displayNameMap.get(file.key) ??
                               getFilename(file.fileName)
-                            const isCheckedForCommit = activeDiffType === 'uncommitted' && gitDiffSelectedFiles.has(file.fileName)
+                            const isCheckedForCommit =
+                              activeDiffType === 'uncommitted' &&
+                              gitDiffSelectedFiles.has(file.fileName)
                             return (
                               <button
                                 key={file.key}
@@ -1141,7 +1157,9 @@ export function GitDiffModal({
                                   'w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors',
                                   'hover:bg-muted/50',
                                   isSelected && 'bg-accent',
-                                  isCheckedForCommit && !isSelected && 'bg-primary/10'
+                                  isCheckedForCommit &&
+                                    !isSelected &&
+                                    'bg-primary/10'
                                 )}
                               >
                                 {activeDiffType === 'uncommitted' && (
@@ -1150,7 +1168,11 @@ export function GitDiffModal({
                                     aria-checked={isCheckedForCommit}
                                     onClick={e => {
                                       e.stopPropagation()
-                                      useUIStore.getState().toggleGitDiffSelectedFile(file.fileName)
+                                      useUIStore
+                                        .getState()
+                                        .toggleGitDiffSelectedFile(
+                                          file.fileName
+                                        )
                                     }}
                                     className={cn(
                                       'h-3.5 w-3.5 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer',
@@ -1242,10 +1264,12 @@ export function GitDiffModal({
                               }
                               themeType={resolvedThemeType}
                               syntaxThemeDark={
-                                preferences?.syntax_theme_dark ?? 'vitesse-black'
+                                preferences?.syntax_theme_dark ??
+                                'vitesse-black'
                               }
                               syntaxThemeLight={
-                                preferences?.syntax_theme_light ?? 'github-light'
+                                preferences?.syntax_theme_light ??
+                                'github-light'
                               }
                               diffStyle={diffStyle}
                               onLineSelected={getLineSelectedCallback(
@@ -1270,7 +1294,11 @@ export function GitDiffModal({
                       className="flex-1 min-h-0"
                     >
                       {/* File sidebar */}
-                      <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
+                      <ResizablePanel
+                        defaultSize={25}
+                        minSize={15}
+                        maxSize={50}
+                      >
                         <div
                           ref={fileListRef}
                           className={cn(
@@ -1290,7 +1318,7 @@ export function GitDiffModal({
                                     setSelectedFileIndex(0)
                                   }}
                                   placeholder="Filter files..."
-                                  className="w-full bg-muted text-sm outline-none border border-border pl-7 pr-2 py-2.5 placeholder:text-muted-foreground focus:border-ring"
+                                  className="w-full bg-muted text-base outline-none border border-border pl-7 pr-2 py-2.5 placeholder:text-muted-foreground focus:border-ring md:text-sm"
                                 />
                               </div>
                             </div>
@@ -1302,7 +1330,9 @@ export function GitDiffModal({
                                 displayNameMap.get(file.key) ??
                                 getFilename(file.fileName)
 
-                              const isCheckedForCommit = activeDiffType === 'uncommitted' && gitDiffSelectedFiles.has(file.fileName)
+                              const isCheckedForCommit =
+                                activeDiffType === 'uncommitted' &&
+                                gitDiffSelectedFiles.has(file.fileName)
 
                               const fileButton = (
                                 <button
@@ -1313,7 +1343,9 @@ export function GitDiffModal({
                                     'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors',
                                     'hover:bg-muted/50',
                                     isSelected && 'bg-accent',
-                                    isCheckedForCommit && !isSelected && 'bg-primary/10'
+                                    isCheckedForCommit &&
+                                      !isSelected &&
+                                      'bg-primary/10'
                                   )}
                                 >
                                   {activeDiffType === 'uncommitted' && (
@@ -1322,7 +1354,11 @@ export function GitDiffModal({
                                       aria-checked={isCheckedForCommit}
                                       onClick={e => {
                                         e.stopPropagation()
-                                        useUIStore.getState().toggleGitDiffSelectedFile(file.fileName)
+                                        useUIStore
+                                          .getState()
+                                          .toggleGitDiffSelectedFile(
+                                            file.fileName
+                                          )
                                       }}
                                       className={cn(
                                         'h-3.5 w-3.5 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer',
@@ -1368,7 +1404,9 @@ export function GitDiffModal({
                                         {fileButton}
                                       </TooltipTrigger>
                                     </ContextMenuTrigger>
-                                    <TooltipContent>{file.fileName}</TooltipContent>
+                                    <TooltipContent>
+                                      {file.fileName}
+                                    </TooltipContent>
                                   </Tooltip>
                                   <ContextMenuContent className="w-48">
                                     <ContextMenuItem
@@ -1392,7 +1430,9 @@ export function GitDiffModal({
                                   <TooltipTrigger asChild>
                                     {fileButton}
                                   </TooltipTrigger>
-                                  <TooltipContent>{file.fileName}</TooltipContent>
+                                  <TooltipContent>
+                                    {file.fileName}
+                                  </TooltipContent>
                                 </Tooltip>
                               )
                             })}
@@ -1427,10 +1467,12 @@ export function GitDiffModal({
                                 }
                                 themeType={resolvedThemeType}
                                 syntaxThemeDark={
-                                  preferences?.syntax_theme_dark ?? 'vitesse-black'
+                                  preferences?.syntax_theme_dark ??
+                                  'vitesse-black'
                                 }
                                 syntaxThemeLight={
-                                  preferences?.syntax_theme_light ?? 'github-light'
+                                  preferences?.syntax_theme_light ??
+                                  'github-light'
                                 }
                                 diffStyle={diffStyle}
                                 onLineSelected={getLineSelectedCallback(
