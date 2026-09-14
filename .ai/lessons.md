@@ -1,5 +1,11 @@
 # Lessons
 
+## Keep dependent setup steps in one action
+
+- When a feature is not usable until its MCP configuration is installed, make the primary install action complete both steps.
+- Do not expose a second setup button when Jean can safely perform the dependent setup automatically.
+- Update the default agent guidance when installation alone does not make agents discover the preferred use case.
+
 ## Make discovery output requirements explicit
 
 - When a prompt requires GitHub discovery results, require a visible state for every issue, pull request, and discussion.
@@ -65,3 +71,9 @@
 - Adapt backend-specific frontmatter and command syntax when an upstream pack targets one harness.
 - Verify a representative workflow set, not only the pack's setup skill or source file count.
 - Do not adapt an optional vendor configuration skill when the requested product is the workflow skill pack. Exclude the configuration skill and preserve the remaining upstream skills.
+
+## Check Jean-managed tool locations before declaring tools unavailable
+
+- A Jean-managed executable can be installed outside `PATH`.
+- Inspect the Jean Settings status or known managed binary path before saying that a tool is not installed.
+- If the binary exists, invoke it by its full path and distinguish “not on PATH” from “not installed.”
