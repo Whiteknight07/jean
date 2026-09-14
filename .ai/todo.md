@@ -1,12 +1,16 @@
-# Lessons maintenance
+# Resolve merge conflicts
 
-- [x] Review `.ai/lessons.md` for duplicate and feature-specific guidance.
-- [x] Merge related rules into concise project-wide lessons.
-- [x] Review the diff and record the result.
+- [x] Inspect the active Git operation and conflicting file.
+- [x] Compare both versions of `.ai/todo.md`.
+- [x] Replace stale task records with the current task record.
+- [x] Stage the resolved file and verify that no conflict markers remain.
+- [x] Continue the merge and resolve any later conflicts.
+- [x] Verify that the branch is ready to push.
 
 ## Review
 
-- Reduced `.ai/lessons.md` from 125 lines to 81 lines.
-- Merged repeated multi-server, backend, session, and cross-platform rules.
-- Removed feature-specific names and implementation details where a reusable rule was sufficient.
-- Verification passed with `git diff --check`.
+- `.ai/todo.md` had two stale task records: the PR review from the branch and
+  lessons maintenance from `origin/main`.
+- Replaced both records with the current conflict-resolution record because
+  `.ai/todo.md` is reset for each new task.
+- Staged the resolution and completed the merge with no later conflicts.
