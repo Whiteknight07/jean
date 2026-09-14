@@ -1,20 +1,19 @@
-# Fix native Web Access crypto loading
+# Mobile magic menu layout
 
-- [x] Identify direct `crypto.randomUUID()` calls that bypass browser compatibility handling.
-- [x] Add a regression test that rejects direct `crypto.randomUUID()` use.
-- [x] Route all ID creation through the existing compatible `generateId()` helper.
-- [x] Run the focused test and `bun run check:all`.
-- [x] Record the result and test steps.
+- [x] Add a regression test for the mobile full-width, two-column layout.
+- [x] Make the mobile menu full width with two command columns.
+- [x] Run focused tests and quality checks.
+- [x] Record review results.
 
 ## Review
 
-- Root cause: four frontend modules called `crypto.randomUUID()` directly. That API is not available in all Web Access contexts.
-- Fix: all frontend ID generation now uses `src/lib/uuid.ts`, which has the existing fallback for contexts without `randomUUID()`.
-- Regression coverage: `src/browser-crypto-compatibility.test.ts` prevents new direct calls outside the compatibility helper.
-- Verification: focused regression test, TypeScript check, production build, and full `bun run check:all` passed.
+- The mobile Magic menu now uses the viewport width with a small edge margin.
+- Commands use two columns. Section labels and separators span both columns.
+- The desktop menu keeps its existing single-column width.
+- Verification passed: focused tests, TypeScript, ESLint, diff checks, and all 2,289 frontend tests.
 
 ## How to test
 
-- Open native Jean and connect to a remote server through Web Access.
-- Open the dashboard and confirm it loads without a `crypto.randomUUID is not a function` error.
-- Open server features, Jean configuration, and project JSON settings to confirm generated rows work.
+- Open a session on a mobile viewport and tap the Magic wand in the bottom toolbar.
+- Confirm that the menu fills the screen width with a small margin and shows commands in two columns.
+- Confirm that section labels and separators remain full width and that each command still runs.
