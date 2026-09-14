@@ -1,11 +1,39 @@
 # Lessons
 
+## Give repeated picker items unique values
+
+- A command item value must include its stable resource ID, not only its display name.
+- When several servers can contain the same project name, show the owning server in each result.
+- Test duplicate display names because command-menu libraries can select every item with an equal value.
+
+## Carry server ownership through path-only commands
+
+- Composite IDs route only commands that include an ID. Git and GitHub commands often include only a repository path.
+- Register paths at the server adapter boundary and route path-only commands through that owner.
+- Include a composite owner ID in query keys and command arguments when the calling component has one.
+
+## Separate connection availability from dashboard inclusion
+
+- A server can remain selectable and connected while it is hidden from the combined dashboard.
+- Apply dashboard inclusion only to aggregation. Do not remove the adapter or change the active legacy connection.
+
+## Keep server ownership visible outside the sidebar
+
+- In a combined dashboard, users must see the current resource owner in the persistent header.
+- Show `All servers` when no project is focused, `Local` for legacy local IDs, and the remote profile name for composite IDs.
+
 ## Keep multi-server scope native-only
 
 - Multi-server Jean aggregation is a native desktop client feature.
 - Browser Web Access must use only the server origin that served the page.
 - Gate connection managers, connection-profile reads, aggregation controls,
   caches, and cross-server routing with `isNativeApp()` and test both modes.
+
+## Do not use a global backend switch in the multi-server client
+
+- The native app must stay attached to its local Jean core.
+- Treat remote profiles as parallel resource adapters, not alternate app backends.
+- Keep server filters and per-action target selectors, but do not show global server switch actions.
 
 ## Close startup UI atomically
 
