@@ -1,5 +1,11 @@
 # Lessons
 
+## Close startup UI atomically
+
+- When a startup effect reads cached preferences, persist and update that cache before closing its modal.
+- A durable write alone does not prevent an immediate reopen while the query cache still contains the old value.
+- Test the close-to-reopen race, not only the persistence call.
+
 ## Keep dependent setup steps in one action
 
 - When a feature is not usable until its MCP configuration is installed, make the primary install action complete both steps.
@@ -77,3 +83,5 @@
 - A Jean-managed executable can be installed outside `PATH`.
 - Inspect the Jean Settings status or known managed binary path before saying that a tool is not installed.
 - If the binary exists, invoke it by its full path and distinguish “not on PATH” from “not installed.”
+
+- For shortcut keycaps, do not assume Unicode modifier glyphs render in browser fonts. Use the explicit `Ctrl` label in web access and reserve `⌘` for native macOS.

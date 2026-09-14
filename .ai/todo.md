@@ -1,16 +1,13 @@
-# Fix duplicate web image paste
+# Stop the feature tour cache race
 
-- [x] Find the duplicate paste event path and confirm the root cause
-- [x] Add a failing regression test
-- [x] Implement the smallest fix
-- [x] Run focused tests and quality checks
-- [x] Add review and test notes
+- [x] Add a failing test for the stale preference cache.
+- [x] Update client preferences in the query cache before close.
+- [x] Run focused tests and quality checks.
+- [x] Record review results.
 
 ## Review
 
-- Root cause: browsers can expose one clipboard image through both `items` and
-  `files` as separate `File` objects. Reference equality did not remove the
-  duplicate.
-- Fix: compare stable file metadata before adding the `files` fallback.
-- Verification: typecheck, focused ESLint, 21 ChatInput tests, and diff checks
-  pass.
+- Root cause: the dismissal was persisted, but the preferences query cache still held `false` long enough for the startup effect to reopen the tour.
+- Fix: client preference patches now update the shared preferences cache before the mutation runs.
+- Regression coverage verifies the seen flag changes synchronously, before startup effects can run again.
+- Verification: Prettier, ESLint, TypeScript, and 39 focused tests passed.
