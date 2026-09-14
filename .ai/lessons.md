@@ -1,5 +1,12 @@
 # Lessons
 
+## Keep multi-server scope native-only
+
+- Multi-server Jean aggregation is a native desktop client feature.
+- Browser Web Access must use only the server origin that served the page.
+- Gate connection managers, connection-profile reads, aggregation controls,
+  caches, and cross-server routing with `isNativeApp()` and test both modes.
+
 ## Close startup UI atomically
 
 - When a startup effect reads cached preferences, persist and update that cache before closing its modal.
