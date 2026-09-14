@@ -341,9 +341,9 @@ export const GeneralPane: React.FC<{ scope?: PreferencesPaneScope }> = ({
   const grokReasoning = getCatalogModelReasoning(
     modelCatalog,
     'grok',
-    preferences?.selected_grok_model ?? 'grok/grok-4.5'
+    preferences?.selected_grok_model ?? 'grok/grok-4.6'
   )
-  const selectedGrokModel = preferences?.selected_grok_model ?? 'grok/grok-4.5'
+  const selectedGrokModel = preferences?.selected_grok_model ?? 'grok/grok-4.6'
   const selectedGrokReasoningOptions = withAdaptiveEffortOption(
     grokReasoning?.type === 'effort'
       ? grokReasoning.levels
@@ -3914,6 +3914,18 @@ export const GeneralPane: React.FC<{ scope?: PreferencesPaneScope }> = ({
             </InlineField>
 
             <InlineField
+              label="Keep AI servers warm"
+              description="Keep Codex and OpenCode running for 10 minutes after a request so follow-up prompts start faster"
+            >
+              <Switch
+                checked={preferences?.keep_ai_servers_warm ?? true}
+                onCheckedChange={checked => {
+                  patchPreferences.mutate({ keep_ai_servers_warm: checked })
+                }}
+              />
+            </InlineField>
+
+            <InlineField
               label="Parallel execution prompting"
               description="Add system prompt encouraging sub-agent parallelization for faster task execution"
             >
@@ -4117,6 +4129,8 @@ export const GeneralPane: React.FC<{ scope?: PreferencesPaneScope }> = ({
                           ? remoteCodexDefaultModelOptions
                           : effectiveBuildBackend === 'commandcode'
                             ? commandCodeModelOptions
+                            : effectiveBuildBackend === 'grok'
+                              ? grokModelOptions
                             : remoteClaudeModelOptions
                         ).map(option => (
                           <SelectItem key={option.value} value={option.value}>
@@ -4362,6 +4376,8 @@ export const GeneralPane: React.FC<{ scope?: PreferencesPaneScope }> = ({
                           ? remoteCodexDefaultModelOptions
                           : effectiveYoloBackend === 'commandcode'
                             ? commandCodeModelOptions
+                            : effectiveYoloBackend === 'grok'
+                              ? grokModelOptions
                             : remoteClaudeModelOptions
                         ).map(option => (
                           <SelectItem key={option.value} value={option.value}>
@@ -4546,6 +4562,18 @@ export const GeneralPane: React.FC<{ scope?: PreferencesPaneScope }> = ({
                   ))}
                 </SelectContent>
               </Select>
+            </InlineField>
+
+            <InlineField
+              label="Combined git sync button"
+              description="Replace separate Pull and Push badges with one Sync button that does both"
+            >
+              <Switch
+                checked={preferences?.git_sync_button ?? true}
+                onCheckedChange={checked => {
+                  patchPreferences.mutate({ git_sync_button: checked })
+                }}
+              />
             </InlineField>
 
             <InlineField

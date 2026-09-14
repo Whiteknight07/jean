@@ -2,6 +2,22 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 describe('GeneralPane settings structure', () => {
+  it('shows the combined git sync setting in General instead of Experimental', () => {
+    const generalSource = readFileSync(
+      'src/components/preferences/panes/GeneralPane.tsx',
+      'utf8'
+    )
+    const experimentalSource = readFileSync(
+      'src/components/preferences/panes/ExperimentalPane.tsx',
+      'utf8'
+    )
+
+    expect(generalSource).toContain('label="Combined git sync button"')
+    expect(generalSource).toContain('git_sync_button')
+    expect(experimentalSource).not.toContain('Combined git sync button')
+    expect(experimentalSource).not.toContain('git_sync_button')
+  })
+
   it('uses the Kimi-style header and cards for every AI backend pane', () => {
     const source = readFileSync(
       'src/components/preferences/panes/GeneralPane.tsx',
@@ -138,6 +154,22 @@ describe('GeneralPane settings structure', () => {
     expect(executionOverrides).toContain('buildReasoning.levels.map')
     expect(executionOverrides).toContain('yoloReasoning.levels.map')
     expect(executionOverrides).not.toContain('? codexReasoningOptions')
+  })
+
+  it('uses Grok models for build and yolo overrides when Grok is selected', () => {
+    const source = readFileSync(
+      'src/components/preferences/panes/GeneralPane.tsx',
+      'utf8'
+    )
+    const executionOverrides = source.slice(
+      source.indexOf('Build execution'),
+      source.indexOf('AI Language')
+    )
+
+    expect(
+      executionOverrides.match(/effective(?:Build|Yolo)Backend === 'grok'/g)
+    ).toHaveLength(2)
+    expect(executionOverrides.match(/\? grokModelOptions/g)).toHaveLength(2)
   })
 
   // Regression #505: shared patchPreferences.isPending made the AI Language

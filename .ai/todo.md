@@ -1,16 +1,19 @@
-# PR #664 investigation
+# Resolve merge conflicts
 
-- [x] Read repository guidance and PR metadata, reviews, comments, checks, and diff.
-- [x] Inspect skill discovery callers and behavior, including depth, ordering, errors, and symlinks.
-- [x] Run focused tests and static checks; determine whether more code changes are needed.
-- [x] Review security and merge readiness.
-- [x] Record findings, changes, and verification results below.
+- [x] Inspect the active Git operation and both conflicting files.
+- [x] Compare the skill scanner implementations and tests from both sides.
+- [x] Resolve and stage `.ai/todo.md` and `jean-core/src/projects/commands.rs`.
+- [x] Continue the merge and resolve any additional conflicts.
+- [x] Run focused verification and confirm the branch is ready to push.
 
 ## Review
 
-- PR #664 correctly implements recursive skill discovery on its old base and has no review comments.
-- Current `origin/main` is 95 commits ahead and already contains the same fix from PR #666 (`930d6f43`). It also has stronger error logging and a symlinked-`SKILL.md` test.
-- GitHub reports PR #664 as `CONFLICTING` / `DIRTY`. Merging it is unnecessary and would duplicate the implementation already on `main`; close it as superseded by PR #666.
-- Security review found no malicious code, dependency changes, secrets, command execution, network access, or authorization changes in this PR.
-- Verification: focused skill tests passed (17/17); full jean-core tests passed (1066 passed, 1 ignored); rustfmt and `git diff --check` passed.
-- `cargo clippy -- -D warnings` is blocked on the stale PR branch by `chunks_exact_to_as_chunks` in `jean-core/src/platform/wsl.rs`; current `origin/main` already contains that lint fix. No PR-specific code change is needed.
+- `.ai/todo.md` contained two stale task records. It now contains only this
+  conflict-resolution task, as required by the repository workflow.
+- `jean-core/src/projects/commands.rs` used two implementations of the same
+  nested skill discovery fix. Kept the `origin/main` implementation because it
+  has clearer error logging and broader tests, including symlinked skill files.
+- The merge completed without more conflicts. The branch is three commits ahead
+  of `origin/main` and has no local changes.
+- Verification passed: five focused skill-discovery tests, Rust formatting,
+  Clippy with warnings denied, and `git diff --check`.
