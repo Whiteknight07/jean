@@ -11,6 +11,8 @@
 - Composite IDs route only commands that include an ID. Git and GitHub commands often include only a repository path.
 - Register paths at the server adapter boundary and route path-only commands through that owner.
 - Include a composite owner ID in query keys and command arguments when the calling component has one.
+- Build remote image URLs from the resource owner. Never use the legacy active-server URL for remote assets.
+- Test persisted attachment URLs in both native and Web Access. Axum wildcard paths include a leading slash and must be normalized before joining them to app data.
 
 ## Separate connection availability from dashboard inclusion
 
@@ -34,6 +36,7 @@
 - The native app must stay attached to its local Jean core.
 - Treat remote profiles as parallel resource adapters, not alternate app backends.
 - Keep server filters and per-action target selectors, but do not show global server switch actions.
+- Show server ownership labels only in native multi-server UI. They are redundant in single-origin Web Access.
 
 ## Close startup UI atomically
 
