@@ -1,15 +1,10 @@
-# Combined dashboard server sections
+# Hide mobile script submenu
 
-- [x] Group projects by server when the All servers filter is active.
-- [x] Replace repeated project server badges with one server section title.
-- [x] Add regression tests and run quality checks.
-- [x] Style and align the server filter with Jean controls.
+- [x] Remove the Scripts submenu from the mobile header menu.
+- [x] Keep the submenu in Web Access desktop and keep it hidden on native desktop.
+- [x] Update regression tests and run quality checks.
 
 ## Review
 
-- The combined view keeps the local `Projects` section and adds one separated
-  uppercase section for each remote server.
-- Project rows no longer repeat the remote server name badge.
-- Focused tests, TypeScript checks, lint, and diff checks pass.
-- The server filter now uses the standard Jean select and aligns with section
-  titles on the same 12 px left edge.
+- Scripts now appears only in the Web Access desktop action menu.
+- The focused tests, TypeScript check, lint, and diff check pass.
