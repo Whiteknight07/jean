@@ -1,9 +1,11 @@
-# GitHub Issue Search Magic Command
+# Fix CLI source switching
 
-- [ ] Locate the global GitHub-issue-search instruction and magic command architecture.
-- [ ] Define the smallest desktop/mobile command design.
-- [ ] Add failing tests for prompt removal and magic command behavior.
-- [ ] Implement the command and menu entries.
-- [ ] Run focused tests and `bun run check:all`.
-- [ ] Search GitHub issues and discussions for related reports.
-- [ ] Record review and test results.
+- [ ] Trace the Settings source selector and reproduce the System PATH → Jean managed failure.
+- [ ] Add a failing regression test.
+- [ ] Implement the smallest root-cause fix.
+- [ ] Run focused tests and quality checks.
+- [ ] Search related GitHub issues and discussions.
+
+## Review
+
+- Pending.
